@@ -9,7 +9,7 @@
     mail_host: "smtp.gmail.com"
     mail_port: "465"  # SSL 安全端口
     sender_username: "fzhang@redhat.com"
-    sender_password: "bobenmbjctpshnpm"
+    sender_password: "b#########m"
     mail_to:
       - "fzhang@redhat.com"
     email_subject: "Linux Issue RCA Report & remediate Playbook by Deepseek"
