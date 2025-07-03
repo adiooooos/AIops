@@ -10,7 +10,7 @@
     playbook_dest: "rhel7_remediate_by_deepseek.yml"  # 仓库中的目标文件名
     git_branch: "master"  # 目标分支
     # 假设 Gitee 访问令牌通过环境变量或 Ansible Vault 提供
-    gitee_token: "31b5014f0fd4c820a60653d929e1234a"
+    gitee_token: "##########################################"
   
   tasks:
     # 任务 1：确保 git 已安装
