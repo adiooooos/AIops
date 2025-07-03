@@ -10,16 +10,26 @@ By integrating Prometheus, Alertmanager, Ansible EDA, Deepseek AI and AAP, this 
 The flow chart of Nginx process crash self-healing is as follows:
 
 ###	DEMO Scenario
-![image](https://github.com/user-attachments/assets/64a703ab-8691-472e-9842-e68c0fa52099)
-The Process is as follows:
-1. Prometheus/Alertmanager keep watching a target hosts which running Nginx service;
-2. EDA runs rulebook with webhook to listen for defined events from Alertmanager
-3. when the Nginx Service state is failed in the target hosts have being detected, Alertmanager will send alert to EDA 
-4. EDA receiving the event, trigger the Rulebook action “run_module” to save the events information to a file（/tmp/alert_info.txt）;
-5. Using a Playbook to analyze the file（/tmp/alert_info.txt）which contains alert events information then to send to Deepseek via API call. the playbook also received the Deepseek’s response(json format), Performing data analysis, formatting and refinement, then send the diagnostic file（/tmp/rhel7_RCA_TIMESTAMP.txt）& Remediate playbook(/tmp/rhel7_remediate.yml) to AAP
-6. AAP using a playbook(send_mail.yml) to send the diagnostic information & Remediate playbook to ADMIN mail for decision making;
-7. Remediate the Issue if ADMIN approved or after tuned;
-8. AAP exec Health check & send Report to ADMIN;
+![image](https://github.com/user-attachments/assets/806c835b-d59b-42b3-a98b-9777c83defed)
+![image](https://github.com/user-attachments/assets/917b6e6a-8b06-4e9e-acee-19c64397c697)
+
+###	DEMO Expecting results
+![image](https://github.com/user-attachments/assets/6bb87e61-a521-4752-8007-6e2492151706)
+![image](https://github.com/user-attachments/assets/6f0033ac-01a6-4f75-9218-e9d630fbb22f)
+![image](https://github.com/user-attachments/assets/c24ce408-7415-4aad-b516-bf0bae7e570d)
+![image](https://github.com/user-attachments/assets/acccaf3a-dc4b-4a5e-8c09-786c54f36fb0)
+
+#### Branch 1：Accepted the AI’s resolution 
+![image](https://github.com/user-attachments/assets/c41edc1c-230b-42e1-ac1a-6976bb189008)
+
+#### Branch 2：Branch 2: Tuning the playbook w/ Gitops
+![image](https://github.com/user-attachments/assets/39cdfa2b-92f7-4e57-8e41-466981ab2c30)
+
+
+ 
+
+
+
 
 
 
