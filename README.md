@@ -1,4 +1,5 @@
-![image](https://github.com/user-attachments/assets/6689dfce-4919-4ddc-9091-df24320b07ef)# AIOps Demo: Automated Nginx Self-Healing
+![image](https://github.com/user-attachments/assets/6689dfce-4919-4ddc-9091-df24320b07ef)
+# AIOps Demo: Automated Nginx Self-Healing
 
 This repository contains the resources for an AIOps demonstration focused on the automated detection, diagnosis, and self-healing of a crashed Nginx service. The solution integrates leading open-source monitoring tools with Red Hat Ansible Automation Platform and a Large Language Model (LLM) to create a closed-loop, event-driven automation workflow.
 
@@ -149,8 +150,7 @@ Below is a high-level configuration summary:
 
 
 ## License
-
-This project is provided as a proof-of-concept. Please add an appropriate open-source license if you plan to extend it. An MIT or Apache 2.0 license is recommended.
+TBU: An MIT or Apache 2.0 license 
 
                
 
