@@ -40,10 +40,9 @@ The demo environment consists of three primary components:
     * **Services:** Runs the critical Nginx service and the `node_exporter` agent for metric collection by Prometheus.
 
 ### High-Level Diagram
+![image](https://github.com/user-attachments/assets/dffd87fc-114d-4393-a77b-22c0341ab930)
+![image](https://github.com/user-attachments/assets/5a559f6c-6af6-41b8-9a45-79c2e440e377)
 
-*(It is recommended to add the "DEMO Scenario" diagram from the provided Word document here for better visualization.)*
-
-![DEMO Scenario](https://i.imgur.com/K1H22c3.png)
 
 ## Workflow Process
 
