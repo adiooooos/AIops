@@ -1,0 +1,11 @@
+groups:
+- name: nginx_service_alerts
+  rules:
+  - alert: NginxServiceFailed
+    expr: node_systemd_unit_state{name="nginx.service",state="failed"} == 1
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Nginx 服务状态异常 (实例 {{ $labels.instance }})"
+      description: "在 {{ $labels.instance }} 上的 Nginx 服务状态为 'failed'，已持续 1 分钟，请检查服务状态和日志。"

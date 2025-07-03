@@ -1,0 +1,22 @@
+global:  # 添加全局配置
+  resolve_timeout: 5m  # 告警解决超时时间，保持默认值
+
+route:  # 路由规则，保留你的时间参数
+  group_by: ['alertname']  # 按告警名称分组（与你的配置一致）
+  group_wait: 10s  # 等待 10 秒（你的设置）
+  group_interval: 1m  # 每 1 分钟发送（你的设置）
+  repeat_interval: 5m  # 每 5 分钟重复（你的设置）
+  receiver: 'EDA'  # 保持你的接收器名称
+
+receivers:  # 接收器配置
+  - name: 'EDA'  # 保持你的接收器名称
+    webhook_configs:
+      - url: 'http://10.71.18.47:5000/alerts'  # 你的 Webhook 端点
+        send_resolved: true  # 添加此选项，告警解决时也发送通知
+
+inhibit_rules:  # 可选：添加抑制规则
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'instance']  # 抑制规则：critical 级别抑制 warning 级别

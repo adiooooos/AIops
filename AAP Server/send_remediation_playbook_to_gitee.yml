@@ -1,0 +1,122 @@
+---
+- name: Send remediation Playbook to Gitee for Operation team optimization
+  hosts: aap25
+  gather_facts: yes
+  # 定义变量，包括 Gitee 仓库信息和文件路径
+  vars:
+    gitee_repo_url: "https://gitee.com/fengyuancheung/aiops_-test_-env.git"
+    local_repo_path: "/tmp/aiops_-test_-env"  # 本地克隆仓库的路径
+    playbook_source: "/var/lib/awx/projects/AIOPS/rhel7_remediate_by_deepseek.yml"
+    playbook_dest: "rhel7_remediate_by_deepseek.yml"  # 仓库中的目标文件名
+    git_branch: "master"  # 目标分支
+    # 假设 Gitee 访问令牌通过环境变量或 Ansible Vault 提供
+    gitee_token: "31b5014f0fd4c820a60653d929e1234a"
+  
+  tasks:
+    # 任务 1：确保 git 已安装
+    # 目的：检查并安装 git 工具，因为后续任务需要使用 git 命令。
+    - name: Ensure git is installed
+      ansible.builtin.dnf:
+        name: git
+        state: present
+      become: yes  # 需要 root 权限来安装软件包
+
+    # 任务 2：创建本地仓库目录
+    # 目的：确保用于克隆 Gitee 仓库的本地目录存在。
+    - name: Ensure local repository directory exists
+      ansible.builtin.file:
+        path: "{{ local_repo_path }}"
+        state: directory
+        mode: "0755"
+
+    # 任务 3：克隆或更新 Gitee 仓库
+    # 目的：克隆 Gitee 仓库到本地目录，如果已存在则更新到最新状态。
+    - name: Clone or update Gitee repository
+      ansible.builtin.git:
+        repo: "{{ gitee_repo_url | replace('https://', 'https://oauth2:' + gitee_token + '@') }}"
+        dest: "{{ local_repo_path }}"
+        version: "{{ git_branch }}"
+        accept_hostkey: yes  # 自动接受 SSH 主机密钥（如果使用 SSH）
+        update: yes  # 确保仓库是最新的
+      register: git_clone_result
+      # 忽略错误，因为后续任务可以处理克隆失败的情况
+      ignore_errors: yes
+
+    # 任务 4：检查 Playbook 源文件是否存在
+    # 目的：验证 Deepseek 生成的 Playbook 文件是否存在，避免后续任务失败。
+    - name: Check if remediation Playbook exists
+      ansible.builtin.stat:
+        path: "{{ playbook_source }}"
+      register: playbook_stat
+      failed_when: not playbook_stat.stat.exists  # 如果文件不存在，任务失败
+
+    # 任务 5：拷贝 Playbook 文件到本地仓库
+    # 目的：将 Deepseek 生成的 Playbook 拷贝到本地仓库目录，准备提交。
+    - name: Copy remediation Playbook to local repository
+      ansible.builtin.copy:
+        src: "{{ playbook_source }}"
+        dest: "{{ local_repo_path }}/{{ playbook_dest }}"
+        mode: "0644"
+        remote_src: yes
+      when: playbook_stat.stat.exists
+
+    # 任务 6：设置 Git 用户信息
+    # 目的：配置 Git 的提交者信息，确保提交记录有正确的用户名和邮箱。
+    - name: Configure Git user information
+      ansible.builtin.command:
+        cmd: "{{ item }}"
+        chdir: "{{ local_repo_path }}"
+      loop:
+        - "git config --global user.name 'FengyuanCheung@RedHat' "
+        - "git config --global user.email '14512172+fengyuancheung@user.noreply.gitee.com'"
+      when: git_clone_result is success
+
+    # 任务 7：添加 Playbook 文件到 Git 索引
+    # 目的：将拷贝的 Playbook 文件添加到 Git 的暂存区，准备提交。
+    - name: Stage remediation Playbook
+      ansible.builtin.command:
+        cmd: "git add {{ playbook_dest }}"
+        chdir: "{{ local_repo_path }}"
+      when: git_clone_result is success
+
+    # 任务 8：提交 Playbook 文件到本地仓库
+    # 目的：提交更改到本地 Git 仓库，包含描述性的提交信息。
+    - name: Commit remediation Playbook
+      ansible.builtin.command:
+        cmd: "git commit -m 'Add remediation Playbook for Operation team optimization'"
+        chdir: "{{ local_repo_path }}"
+      register: git_commit_result
+      # 忽略错误，因为可能没有更改需要提交
+      ignore_errors: yes
+      when: git_clone_result is success
+
+    # 任务 9：推送更改到 Gitee 仓库
+    # 目的：将本地仓库的提交推送回 Gitee 仓库，更新远程分支。
+    - name: Push changes to Gitee
+      ansible.builtin.command:
+        cmd: "git push origin {{ git_branch }}"
+        chdir: "{{ local_repo_path }}"
+      when: 
+        - git_clone_result is success
+        - git_commit_result is success
+      environment:
+        # 设置 HTTPS 推送的认证信息
+        GIT_ASKPASS: "/bin/echo"
+        GIT_USERNAME: "fengyuancheung"
+        GIT_PASSWORD: "{{ gitee_token }}"
+
+    # 任务 10：清理本地仓库目录（可选）
+    # 目的：在成功推送后，删除临时克隆的仓库目录以节省空间。
+    - name: Clean up local repository directory
+      ansible.builtin.file:
+        path: "{{ local_repo_path }}"
+        state: absent
+      when: git_commit_result is success
+
+    # 任务 11：调试输出
+    # 目的：输出调试信息，确认 Playbook 文件已成功推送到 Gitee。
+    - name: Debug Gitee push result
+      ansible.builtin.debug:
+        msg: "Remediation Playbook {{ playbook_dest }} has been successfully pushed to Gitee repository {{ gitee_repo_url }}"
+      when: git_commit_result is success
+

@@ -1,0 +1,44 @@
+---
+- hosts: 10.71.19.192
+  become: yes
+  tasks:
+
+    # task1: 从EDA server 
+    - name: Check nginx service status
+      command: systemctl status nginx.service
+      register: nginx_status
+      ignore_errors: yes
+
+    - name: Validate nginx configuration
+      command: nginx -t
+      register: nginx_test
+      ignore_errors: yes
+
+    - name: Check port 80 conflict
+      command: netstat -tulnp | grep ":80 "
+      register: port_check
+      ignore_errors: yes
+
+    - name: View last 10 error logs
+      command: tail -10 /var/log/nginx/error.log
+      register: nginx_errors
+      ignore_errors: yes
+
+    - name: Check system memory
+      command: free -m
+      register: memory_check
+      ignore_errors: yes
+
+    - name: Restart nginx service
+      systemd:
+        name: nginx.service
+        state: restarted
+      when: nginx_test.rc == 0
+      ignore_errors: yes
+
+    - name: Force reload nginx
+      systemd:
+        name: nginx.service
+        state: reloaded
+      when: nginx_test.rc != 0
+      ignore_errors: yes

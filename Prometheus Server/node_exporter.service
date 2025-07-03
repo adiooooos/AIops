@@ -1,0 +1,17 @@
+[Unit]
+Description=Prometheus Node Exporter
+After=network.target
+
+[Service]
+Type=simple
+User=root
+
+# 指定启动的端口和日志级别
+ExecStart=/usr/local/bin/node_exporter --web.listen-address=:9091 --log.level=error
+MemoryLimit=300M
+CPUQuota=100%
+Restart=on-failure
+
+
+[Install]
+WantedBy=multi-user.target

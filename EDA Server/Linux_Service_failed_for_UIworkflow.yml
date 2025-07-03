@@ -1,0 +1,35 @@
+---
+- name: Listen for Nginx Service Failed Alerts and Process with Module
+  hosts: aap25EDA
+  sources:
+    - ansible.eda.webhook:
+        host: 0.0.0.0
+        port: 5000
+
+  execution_strategy: sequential
+
+  rules:
+    - name: Handle Nginx Service Failed Alert
+      condition: event.payload is defined or event.payload.alerts[0].labels.alertname == "NginxServiceFailed"
+      actions:
+        # 调试：打印完整事件
+        - debug:
+            msg: "Received event: {{ event }}"
+
+        # 调试：打印原始告警数据
+        - debug:
+            msg: "Received alerts: {{ event.payload.alerts }}"
+
+        # 保存告警信息到文件（移除 to_json 过滤器）
+        - run_module:
+            name: ansible.builtin.copy
+            module_args:
+              content: "{{ event }}"
+              dest: "/tmp/alert_info.txt"
+              mode: "0644"
+
+        # 运行AIOPS workflow
+        - run_workflow_template:
+            name: AIOPS_Nginx_self_healing
+            organization: Venetian
+            

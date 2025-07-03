@@ -1,0 +1,13 @@
+[rhel7]
+10.71.19.192
+
+[aap25EDA]
+10.71.18.47
+
+[aap25]
+10.71.18.35
+
+[all:children]
+rhel7
+aap25EDA
+aap25

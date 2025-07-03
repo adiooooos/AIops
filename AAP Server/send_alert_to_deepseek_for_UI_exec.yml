@@ -1,0 +1,162 @@
+---
+- name: Send Alert Information to Deepseek and Save Response
+  hosts: aap25
+  gather_facts: yes  # 需要获取当前时间用于时间戳
+  vars:
+    alert_file: "/tmp/alert_info.txt"  # 告警文件路径
+    rca_output_file: "/tmp/rhel7_RCA_{{ ansible_date_time.iso8601_basic_short }}.txt"  # 根因分析结果文件
+    remediate_playbook_file: "/tmp/rhel7_remediate_by_deepseek.yml"  # 修复 Playbook 文件路径
+    mail_host: "smtp.gmail.com"
+    mail_port: "465"  # SSL 安全端口
+    sender_username: "fzhang@redhat.com"
+    sender_password: "bobenmbjctpshnpm"
+    mail_to:
+      - "fzhang@redhat.com"
+    email_subject: "Linux Issue RCA Report & remediate Playbook by Deepseek"
+
+  tasks:
+    # 新增任务：从 EDA 服务器 fetch 文件到 AAP 服务器
+    - name: Fetch alert_info.txt from EDA server to AAP server
+      ansible.builtin.fetch:
+        src: "/tmp/alert_info.txt"
+        dest: "/tmp/alert_info.txt"
+        flat: yes
+      delegate_to: aap25EDA
+
+    # 更新 alert_file 变量为 AAP 服务器上的路径
+    - name: Set alert_file path to AAP server
+      ansible.builtin.set_fact:
+        alert_file: "/tmp/alert_info.txt"
+
+    # 任务 1：读取告警文件
+    - name: Read alert information from file
+      ansible.builtin.slurp:
+        src: "{{ alert_file }}"
+      register: alert_data
+
+
+    # 任务 2：解析告警数据（JSON 格式）
+    - name: Parse alert data as JSON
+      ansible.builtin.set_fact:
+        alert_json: "{{ alert_data.content | b64decode | from_json }}"
+
+    # 任务 3：提取所需字段
+    - name: Extract required fields from alert data
+      ansible.builtin.set_fact:
+        alertname: "{{ alert_json.payload.alerts[0].labels.alertname }}"
+        instance: "{{ alert_json.payload.alerts[0].labels.instance }}"
+        service_name: "{{ alert_json.payload.alerts[0].labels.name }}"
+        service_state: "{{ alert_json.payload.alerts[0].labels.state }}"
+
+    # 任务 4：处理 instance 字段，提取 IP 地址（去掉端口号）
+    - name: Extract IP address from instance
+      ansible.builtin.set_fact:
+        server_ip: "{{ instance.split(':')[0] }}"
+
+    # 任务 5：构造 Deepseek 请求消息
+    - name: Construct Deepseek request message
+      ansible.builtin.set_fact:
+        deepseek_message: |
+          我的 RHEL7 server 发生故障；故障描述为 "{{ alertname }}"。
+          RHEL7 server IP 为 "{{ server_ip }}"。
+          RHEL7 server 的 Service name 为 "{{ service_name }}"，其 state 为 "{{ service_state }}"。
+          我希望 Deepseek 关闭深度思考，给我进行一个简单的根因分析并输出 Playbook，要求在 Playbook 里的每个 Diagnose 或者 fix 的步骤加上“ignore_errors: yes”。
+          输出格式如下，分别输出以下两部分：
+          ### BEGIN_RCA
+          [这里是 RCA 文本内容；200 字以内的 RCA 描述，纯文本格式，适合直接保存到 TXT 文件。]
+          ### END_RCA
+          ### BEGIN_PLAYBOOK
+          [这里是完整的 Playbook YAML；Ansible Playbook 内容，YML 格式，适合直接保存到 YML 文件]
+          ### END_PLAYBOOK
+
+    # 任务 6：调用 Deepseek API
+    - name: Send alert data to Deepseek API
+      ansible.builtin.uri:
+        url: "https://api.deepseek.com/v1/chat/completions"
+        method: POST
+        headers:
+          Content-Type: "application/json"
+          Authorization: "Bearer sk-3b127c4dc58d4822beaadbe2f81e348c"
+        body_format: json
+        body:
+          model: "deepseek-chat"
+          temperature: 0.3
+          top_p: 0.9
+          messages:
+            - role: "user"
+              content: "{{ deepseek_message }}"
+        status_code: 200
+        return_content: yes
+        timeout: 120  # 增加超时时间到 120 秒
+      register: deepseek_response
+      retries: 3  # 重试 3 次
+      delay: 5  # 每次重试间隔 5 秒
+      until: deepseek_response.status is defined and deepseek_response.status == 200
+
+    # 任务 7：提取 Deepseek 响应的 RCA 和 Playbook 部分
+    - name: Extract RCA and Playbook from Deepseek response
+      ansible.builtin.set_fact:
+        deepseek_content: "{{ deepseek_response.json.choices[0].message.content }}"
+        rca_content: "{{ deepseek_response.json.choices[0].message.content.split('### BEGIN_RCA')[1].split('### END_RCA')[0] | trim }}"
+        playbook_content: "{{ deepseek_response.json.choices[0].message.content.split('### BEGIN_PLAYBOOK')[1].split('### END_PLAYBOOK')[0] | trim }}"
+
+    # 任务 8：保存根因分析结果到 TXT 文件
+    - name: Save Deepseek RCA to file
+      ansible.builtin.copy:
+        content: |
+          Deepseek Root Cause Analysis
+          ===========================
+          {{ rca_content }}
+        dest: "{{ rca_output_file }}"
+        mode: "0644"
+
+    # 任务 9：保存修复 Playbook 到 YML 文件
+    - name: Save Deepseek remediation Playbook to file
+      ansible.builtin.copy:
+        content: "{{ playbook_content }}"
+        dest: "{{ remediate_playbook_file }}"
+        mode: "0644"
+
+    # 任务 10：调试输出
+    - name: Debug Deepseek response
+      ansible.builtin.debug:
+        msg: |
+          Deepseek RCA saved to {{ rca_output_file }}
+          Remediation Playbook saved to {{ remediate_playbook_file }}
+
+    # 任务 11：发送 RCA 和 Playbook 文件到指定邮箱
+    - name: Send RCA and Playbook files to admin email
+      community.general.mail:
+        host: "{{ mail_host }}"
+        port: "{{ mail_port }}"
+        username: "{{ sender_username }}"
+        password: "{{ sender_password }}"
+        to: "{{ mail_to }}"
+        subject: "{{ email_subject }}"
+        body: |
+          Dear Admin,
+
+          Attached are the Root Cause Analysis (RCA) and Remediation Playbook for the recent RHEL 7 server issue.
+
+          - RCA File: {{ rca_output_file }}
+          - Playbook File: {{ remediate_playbook_file }}
+
+          Please review and take necessary actions.
+
+          Best regards,
+          Ansible Automation
+        attach:
+          - "{{ rca_output_file }}"
+          - "{{ remediate_playbook_file }}"
+
+    # 任务 12：将"{{ remediate_playbook_file }}"拷贝到本机目录 /var/lib/awx/projects/AIOPS 下
+    - name: Copy remediation Playbook to AIOPS directory
+      ansible.builtin.copy:
+        src: "{{ remediate_playbook_file }}"
+        dest: "/var/lib/awx/projects/AIOPS/rhel7_remediate_by_deepseek.yml"
+        mode: "0644"
+        owner: root
+        group: root
+        remote_src: yes
+      register: playbook_copy_result
+
