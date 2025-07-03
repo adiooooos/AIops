@@ -76,7 +76,7 @@
         method: POST
         headers:
           Content-Type: "application/json"
-          Authorization: "Bearer sk-3b127c4dc58d4822beaadbe2f81e348c"
+          Authorization: "Bearer sk-#####################c"
         body_format: json
         body:
           model: "deepseek-chat"
