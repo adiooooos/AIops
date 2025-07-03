@@ -1,4 +1,4 @@
-# AIOps Demo: Automated Nginx Self-Healing
+![image](https://github.com/user-attachments/assets/6689dfce-4919-4ddc-9091-df24320b07ef)# AIOps Demo: Automated Nginx Self-Healing
 
 This repository contains the resources for an AIOps demonstration focused on the automated detection, diagnosis, and self-healing of a crashed Nginx service. The solution integrates leading open-source monitoring tools with Red Hat Ansible Automation Platform and a Large Language Model (LLM) to create a closed-loop, event-driven automation workflow.
 
@@ -108,19 +108,22 @@ Below is a high-level configuration summary:
 
 ## How to Run the Demo
 
-1.  Ensure all services (AAP, Prometheus, Alertmanager, EDA listener) are running and configured correctly.
-2.  Verify that the Nginx service is active and the demo webpage is accessible.
-3.  On the target Nginx server, simulate a process crash:
+1.  Ensure all services (AAP, Prometheus, Alertmanager, EDA listener) are running and configured correctly. On the EDA server, running the command:
+2.  ```bash
+    ansible-rulebook --rulebook Linux_Service_failed_for_UIworkflow.yml --controller-url  https://xx.xx.xx.xx --controller-username admin --controller-password xxxx -i inventory  --controller-ssl-verify no --print-event -v
+    ```
+3.  Verify that the Nginx service is active and the demo webpage is accessible.
+4.  On the target Nginx server, simulate a process crash:
     ```bash
     sudo pkill -9 nginx
     ```
-4.  Wait for Prometheus to detect the failure (typically within 1-2 minutes).
-5.  Observe the alert firing in Alertmanager and the corresponding event being received by the EDA listener.
-6.  Navigate to the AAP UI. You will see the `AIOPS_Nginx_self_healing` workflow has been launched and is paused at the approval node.
-7.  Check the administrator's email for the RCA and remediation playbook.
-8.  Review and approve the workflow in the AAP UI.
-9.  Observe as the final job runs, fixes the Nginx service, and the workflow completes successfully.
-10. Verify that the Nginx webpage is accessible once again.
+5.  Wait for Prometheus to detect the failure (typically within 1-2 minutes).
+6.  Observe the alert firing in Alertmanager and the corresponding event being received by the EDA listener.
+7.  Navigate to the AAP UI. You will see the `AIOPS_Nginx_self_healing` workflow has been launched and is paused at the approval node.
+8.  Check the administrator's email for the RCA and remediation playbook.
+9.  Review and approve the workflow in the AAP UI.
+10.  Observe as the final job runs, fixes the Nginx service, and the workflow completes successfully.
+11. Verify that the Nginx webpage is accessible once again.
 
 # AIOPS-POC/Demo center setup Guide
 
